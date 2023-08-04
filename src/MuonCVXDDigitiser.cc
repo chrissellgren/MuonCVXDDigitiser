@@ -237,13 +237,18 @@ void MuonCVXDDigitiser::processRunHeader(LCRunHeader* run)
 void MuonCVXDDigitiser::LoadGeometry()
 {
     Detector& theDetector = Detector::getInstance();
-    DetElement vxBarrel = theDetector.detector(_subDetName);              // TODO check missing barrel
-    ZPlanarData&  zPlanarData = *vxBarrel.extension<ZPlanarData>();       // TODO check missing extension
-    std::vector<ZPlanarData::LayerLayout> vx_layers = zPlanarData.layers;
-    _numberOfLayers  = vx_layers.size();
+    //DetElement vxBarrel = theDetector.detector(_subDetName);              // TODO check missing barrel
+    DetElement subDetElement = theDetector.detector(_subDetName); 
+    //ZPlanarData&  zPlanarData = *vxBarrel.extension<ZPlanarData>();     // TODO check missing extension
+    ZPlanarData&  zPlanarData = *subDetElement.extension<ZPlanarData>();        
+    //std::vector<ZPlanarData::LayerLayout> vx_layers = zPlanarData.layers;
+    std::vector<ZPlanarData::LayerLayout> detector_layers = zPlanarData.layers;
+    //_numberOfLayers  = vx_layers.size();
+    _numberOfLayers  = detector_layers.size();
 
     SurfaceManager& surfMan = *theDetector.extension<SurfaceManager>();
-    _map = surfMan.map( vxBarrel.name() ) ;
+    //_map = surfMan.map( vxBarrel.name() ) ;
+    _map = surfMan.map( subDetElement.name() ) ;
     if( ! _map ) 
     {
       std::stringstream err  ; err << " Could not find surface map for detector: "
@@ -266,7 +271,8 @@ void MuonCVXDDigitiser::LoadGeometry()
     _layerPhiOffset.resize(_numberOfLayers);
 
     int curr_layer = 0;
-    for(ZPlanarData::LayerLayout z_layout : vx_layers)
+    //for(ZPlanarData::LayerLayout z_layout : vx_layers)
+    for(ZPlanarData::LayerLayout z_layout : detector_layers)
     {
         // ALE: Geometry is in cm, convert all lenght in mm
         _laddersInLayer[curr_layer] = z_layout.ladderNumber;
@@ -281,11 +287,21 @@ void MuonCVXDDigitiser::LoadGeometry()
 
 #ifdef ZSEGMENTED
         _sensorsPerLadder[curr_layer] = z_layout.sensorsPerLadder;
-
+        streamlog_out(DEBUG5) << "prints if ZSegmented code runs = " << std::endl;
         _layerLadderLength[curr_layer] = z_layout.lengthSensor * z_layout.sensorsPerLadder * dd4hep::cm / dd4hep::mm ;
 #else
         _layerLadderLength[curr_layer] = z_layout.lengthSensor * dd4hep::cm / dd4hep::mm ;
+        streamlog_out(DEBUG0) << "prints if not ZSegmented code runs = " << std::endl;
 #endif
+        //streamlog_out(DEBUG0) << "ladderNumber = " << z_layout.ladderNumber << std::endl;
+        //streamlog_out(DEBUG0) << "distanceSensitive = " << z_layout.distanceSensitive << std::endl;
+        //streamlog_out(DEBUG0) << "lengthsensor = " << z_layout.lengthSensor << std::endl;
+        //streamlog_out(DEBUG0) << "sensorsperladder = " << z_layout.sensorsPerLadder << std::endl;
+        //streamlog_out(DEBUG0) << "widthSensitive = " << z_layout.widthSensitive << std::endl;
+        //streamlog_out(DEBUG0) << "zHalfSensitive = " << z_layout.zHalfSensitive << std::endl;
+        //streamlog_out(DEBUG0) << "distanceSensitive = " << z_layout.distanceSensitive << std::endl;
+        //streamlog_out(DEBUG0) << "offsetSensitive = " << z_layout.offsetSensitive << std::endl;
+
         _layerLadderWidth[curr_layer] = z_layout.widthSensitive * dd4hep::cm / dd4hep::mm ;
 
         _layerLadderHalfWidth[curr_layer] = _layerLadderWidth[curr_layer] / 2.;
@@ -295,6 +311,13 @@ void MuonCVXDDigitiser::LoadGeometry()
         _layerPhiOffset[curr_layer] = z_layout.phi0;
 
         curr_layer++;
+    }
+
+
+    // temp fix for issue: z_layout.lengthSensor = 0 for the inner tracker barrel
+    // manually hard code values for ladderlength
+    if (_layerLadderLength[0] == 0 && _subDetName == "InnerTrackerBarrel"){
+        _layerLadderLength = {963.2,963.2,1384.6};
     }
 
     PrintGeometryInfo();
@@ -307,6 +330,14 @@ void MuonCVXDDigitiser::LoadGeometry()
     if (_ChargeDigitizeNumBits == 6) _DigitizedBins = {500, 542, 572, 601, 629, 661, 692, 721, 750, 779, 812, 842, 877, 913, 946, 981, 1016, 1051, 1087, 1121, 1161, 1196, 1237, 1275, 1313, 1350, 1391, 1431, 1468, 1514, 1560, 1606, 1646, 1687, 1733, 1777, 1821, 1872, 1920, 1976, 2036, 2091, 2145, 2213, 2272, 2337, 2411, 2488, 2573, 2651, 2739, 2834, 2938, 3053, 3194, 3356, 3532, 3764, 4034, 4379, 4907, 5698, 6957, 9636};
     if (_ChargeDigitizeNumBits == 8) _DigitizedBins = {500, 511, 523, 533, 542, 550, 556, 564, 570, 577, 585, 592, 598, 603, 610, 617, 624, 630, 638, 646, 654, 661, 668, 676, 684, 691, 699, 705, 712, 719, 724, 731, 738, 745, 752, 760, 767, 772, 780, 787, 795, 802, 810, 818, 826, 832, 839, 847, 856, 865, 874, 881, 889, 898, 906, 916, 924, 930, 938, 945, 955, 965, 971, 978, 986, 995, 1004, 1012, 1019, 1027, 1036, 1044, 1053, 1062, 1071, 1079, 1088, 1096, 1104, 1112, 1121, 1131, 1139, 1149, 1158, 1168, 1175, 1184, 1193, 1203, 1211, 1221, 1233, 1241, 1249, 1259, 1268, 1277, 1286, 1294, 1303, 1313, 1321, 1330, 1338, 1348, 1357, 1368, 1378, 1387, 1395, 1406, 1417, 1426, 1434, 1445, 1452, 1460, 1470, 1480, 1492, 1503, 1514, 1525, 1536, 1550, 1560, 1570, 1580, 1592, 1604, 1614, 1623, 1634, 1644, 1653, 1662, 1673, 1684, 1695, 1707, 1717, 1727, 1737, 1747, 1759, 1769, 1780, 1790, 1800, 1812, 1823, 1835, 1846, 1860, 1873, 1885, 1897, 1907, 1918, 1931, 1943, 1958, 1971, 1987, 2000, 2014, 2026, 2041, 2056, 2068, 2080, 2095, 2108, 2119, 2131, 2147, 2162, 2180, 2195, 2213, 2224, 2238, 2256, 2269, 2284, 2300, 2314, 2332, 2351, 2366, 2383, 2401, 2421, 2440, 2458, 2475, 2496, 2519, 2538, 2559, 2581, 2601, 2618, 2636, 2658, 2681, 2703, 2722, 2742, 2767, 2791, 2811, 2836, 2857, 2884, 2913, 2938, 2967, 2995, 3023, 3052, 3086, 3119, 3153, 3188, 3221, 3270, 3304, 3342, 3390, 3428, 3473, 3515, 3556, 3611, 3691, 3742, 3801, 3857, 3928, 3999, 4069, 4141, 4220, 4325, 4417, 4518, 4655, 4789, 4965, 5141, 5359, 5548, 5770, 6017, 6311, 6584, 7024, 7492, 8060, 8740, 9738, 11450, 14878, 23973};
 
+    if (_subDetName == "InnerTrackerBarrel") {
+        streamlog_out(MESSAGE) << "Subdetector is: " << _subDetName << std::endl;
+        float shift = 500.;
+        float scalefactor = 2.;
+        for (int i = 0; i < _DigitizedBins.size(); i++){
+            _DigitizedBins[i] = (_DigitizedBins[i] - _DigitizedBins[0]) * scalefactor + shift;
+        }
+    }
 } 
 
 
@@ -540,9 +571,14 @@ void MuonCVXDDigitiser::processEvent(LCEvent * evt)
 
          evt->addCollection( THcol , _outputCollectionName.c_str() ) ;
          evt->addCollection( relCol , _colVTXRelation.c_str() ) ;
-         if (_produceFullPattern != 0)
-            evt->addCollection(STHLocCol, "VTXPixels");
-
+         if (_produceFullPattern != 0) {
+            if (_subDetName == "InnerTrackerBarrel") {
+                evt->addCollection(STHLocCol, "ITBPixels");
+                }
+            if (_subDetName == "VertexBarrel") {
+                evt->addCollection(STHLocCol, "VTXPixels");
+            }
+         }
     }
 
     streamlog_out(DEBUG9) << " Done processing event: " << evt->getEventNumber() 
@@ -597,7 +633,7 @@ void MuonCVXDDigitiser::FindLocalPosition(SimTrackerHit *hit,
     localPosition[0] = lv[0] / dd4hep::mm ;
     localPosition[1] = lv[1] / dd4hep::mm ;
 
-    // Add also z ccordinate
+    // Add also z coordinate
     Vector3D origin( surf->origin()[0], surf->origin()[1], surf->origin()[2]);
     localPosition[2] = ( dd4hep::mm * oldPos - dd4hep::cm * origin ).dot( surf->normal() ) / dd4hep::mm;
 
@@ -786,6 +822,9 @@ void MuonCVXDDigitiser::ProduceHits(SimTrackerHitImplVec &simTrkVec, SimTrackerH
         double yLo = spoint.y - 3 * spoint.sigmaY;
         double yUp = spoint.y + 3 * spoint.sigmaY;
         
+        streamlog_out (DEBUG0) << i << ": Local position boundaries: xLo=" << xLo << ", yLo=" << yLo  
+            <<  ", xUp=" << xUp << ", yUp=" << yUp << std::endl;
+
         int ixLo, ixUp, iyLo, iyUp;
 
         TransformXYToCellID(xLo, yLo, ixLo, iyLo);
@@ -1156,10 +1195,16 @@ void MuonCVXDDigitiser::TransformXYToCellID(double x, double y, int & ix, int & 
 
     // Shift all of L/2 so that all numbers are positive
     double yInLadder = y + _layerLadderLength[layer] / 2;
+    streamlog_out(DEBUG0) << "yInLadder=" << yInLadder << std::endl;
+    streamlog_out(DEBUG0) << "layerLadderLength=" << _layerLadderLength[layer] << std::endl;
     iy = int(yInLadder / _pixelSizeY);
+    streamlog_out(DEBUG0) << "iy=" << iy << std::endl;
 
     double xInLadder = x + _layerLadderHalfWidth[layer];
+    streamlog_out(DEBUG0) << "xInLadder=" << xInLadder << std::endl;
+    streamlog_out(DEBUG0) << "layerHalfWidth=" << _layerLadderHalfWidth[layer] << std::endl;
     ix = int(xInLadder / _pixelSizeX);
+    streamlog_out(DEBUG0) << "ix=" << ix << std::endl;
 }
 
 /**

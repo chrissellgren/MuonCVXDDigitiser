@@ -65,7 +65,7 @@ typedef std::vector<SignalPoint> SignalPointVec;
  * (default value : 0.025) <br>
  * @param ElectronsPerMeV number of electrons produced per MeV of deposited energy <br>
  * (default parameter value : 270.3) <br>
- * @param Threshold threshold on charge deposited on one pixel (in electons) <br>
+ * @param Threshold threshold on charge deposited on one pixel (in electrons) <br>
  * (default parameter value : 200.0) <br>
  * @param SegmentLength segment length along track path which is used to subdivide track into segments (in mm).
  * The number of track subsegments is calculated as int(TrackLengthWithinActiveLayer/SegmentLength)+1 <br>
